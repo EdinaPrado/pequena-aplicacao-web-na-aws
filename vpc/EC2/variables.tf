@@ -17,3 +17,13 @@ variable "vpc_id" {
   description = "ID da VPC onde os recursos serão criados"
   type        = string
 }
+
+variable "public_subnet_cidr" {
+  description = "CIDR da subnet pública"
+  type        = string
+}
+
+variable "availability_zone" {
+  description = "Zona de disponibilidade onde a subnet será criada"
+  type        = string
+}
