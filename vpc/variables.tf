@@ -18,3 +18,9 @@ variable "vpc_id" {
   description = "ID da VPC onde os recursos serão criados"
   type        = string
 }
+
+variable "vpc_cidr" {
+  description = "Bloco CIDR para a VPC"
+  type        = string
+  default     = "10.18.0.0/16"
+}
