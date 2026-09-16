@@ -1,97 +1,189 @@
-# ☁️ Pequena Aplicação Web na AWS
+# Pequena Aplicação Web na AWS
 
-Uma infraestrutura como código (IaC) leve, modular e automatizada utilizando **Terraform** para provisionar recursos na **Amazon Web Services (AWS)** com servidor web **Nginx**.
+Infraestrutura como código (Terraform) para provisionar uma aplicação web simples na AWS, com alta disponibilidade via **Application Load Balancer (ALB)** distribuindo tráfego entre **2 instâncias EC2** em zonas de disponibilidade diferentes, servindo uma página estática via **Nginx**.
 
----
+## Arquitetura
 
-## 📋 Descrição do Projeto
-
-Este projeto automatiza a criação de um ambiente seguro e escalável na AWS para hospedar uma aplicação web utilizando o Nginx. A infraestrutura adota uma **abordagem modular**, dividindo as responsabilidades de rede e computação em subdiretórios próprios. 
-
-Embora vários arquivos compartilhem o mesmo nome (`main.tf`, `variables.tf`, `outputs.tf`), eles possuem **configurações e escopos totalmente diferentes** para garantir o isolamento e a reusabilidade do código.
-
----
-
-## 🛠️ Tecnologias Utilizadas
-
-*   **Terraform** (v1.0.0+) - Ferramenta de Infraestrutura como Código (IaC).
-*   **AWS Cloud** - Provedor de nuvem para hospedagem dos recursos.
-*   **Nginx** - Servidor web de alto desempenho para entregar a aplicação.
-*   **Shell Script (`.sh`)** - Automação do provisionamento do servidor durante a inicialização.
-
----
-
-## 🗂️ Arquitetura de Módulos e Estrutura de Arquivos
-
-O projeto está organizado em um módulo raiz e dois submódulos independentes:
-
-### 📂 Diretório Raiz (Root Module)
-Responsável por orquestrar o projeto, chamando os submódulos e passando os dados de um para o outro.
-*   📄 **`main.tf`**: Instancia e interliga os módulos de rede (`vpc`) e computação (`EC2`).
-*   📄 **`variables.tf`**: Variáveis globais e de ambiente (ex: região padrão da AWS).
-*   📄 **`outputs.tf`**: Exibe as informações consolidadas no terminal ao fim do deploy (ex: URL/IP público da aplicação).
-*   📄 **`data.tf`**: Consultas globais que servem de apoio para múltiplos componentes.
-*   📄 **`.gitignore`**: Configurado para impedir o envio de arquivos de estado local do Terraform (`.tfstate`) e chaves privadas.
-
-### 📂 Módulo de Rede (`/vpc`)
-Contém a lógica isolada para a construção da malha de rede na nuvem.
-*   📄 **`main.tf`**: Criação da VPC, Subnets públicas/privadas, Internet Gateway e Tabelas de Roteamento.
-*   📄 **`variables.tf`**: Parâmetros exclusivos de rede (ex: blocos CIDR da VPC).
-*   📄 **`outputs.tf`**: Exporta dados gerados (como `vpc_id` e `subnet_id`) que a EC2 precisará para ser criada.
-
-### 📂 Módulo de Computação (`/EC2`)
-Focado no provisionamento e na configuração do servidor virtual.
-*   📄 **`main.tf`**: Criação da instância EC2, Security Groups (regras de firewall) e associação com a rede da VPC.
-*   📄 **`variables.tf`**: Parâmetros de hardware (ex: tipo de instância, nome da chave SSH).
-*   📄 **`outputs.tf`**: Exporta dados da máquina (ex: ID da instância, IP público isolado).
-*   📄 **`Nginx.sh`**: Script de *User Data* injetado no boot da EC2 para instalar e iniciar o Nginx de forma 100% automatizada.
-*   📄 **`.terraform.lock.hcl`**: Garante o travamento das versões dos provedores locais específicos deste bloco.
-
----
-
-## 🚀 Como Executar o Projeto
-
-### Prerrequisitos
-
-1. Ter o [Terraform](https://hashicorp.com) instalado.
-2. Ter uma conta na AWS e o [AWS CLI](https://amazon.com) configurado com suas credenciais de acesso (`aws configure`).
-
-### Passo a Passo
-
-**1. Clone o repositório:**
-```bash
-git clone https://gitlab.com/edina25-group/pequena-aplicacao-web-na-aws.git
-cd pequena-aplicacao-web-na-aws
+```
+                        Internet
+                            │
+                            ▼
+                   ┌─────────────────┐
+                   │   ALB (público)  │
+                   │  porta 80 (HTTP) │
+                   └────────┬─────────┘
+                            │
+              ┌─────────────┴─────────────┐
+              ▼                           ▼
+     ┌─────────────────┐         ┌─────────────────┐
+     │  EC2 Instância 1 │         │  EC2 Instância 2 │
+     │  Subnet A (AZ-a) │         │  Subnet B (AZ-b) │
+     │  Nginx + Amazon  │         │  Nginx + Amazon  │
+     │      Linux 2023  │         │      Linux 2023  │
+     └─────────────────┘         └─────────────────┘
+              │                           │
+              └─────────────┬─────────────┘
+                             ▼
+                   ┌──────────────────┐
+                   │   VPC (10.18.0.0/16) │
+                   │  2 subnets públicas  │
+                   │  Internet Gateway    │
+                   │  Route Table pública │
+                   └──────────────────┘
 ```
 
-**2. Inicialize o ambiente do Terraform:**
-Este comando deve ser executado no diretório raiz para baixar os provedores da AWS.
+## Estrutura do repositório
+
+```
+pequena-aplicacao-web-na-aws/
+├── vpc/                          # Módulo de rede (VPC, subnets, IGW, rotas)
+│   ├── main.tf
+│   ├── variables.tf
+│   ├── outputs.tf
+│   ├── terraform.tfvars          # (não versionado — ver .gitignore)
+│   ├── terraform.tfvars.example
+│   └── EC2/                      # Módulo de aplicação (instâncias EC2)
+│       ├── main.tf
+│       ├── variables.tf
+│       ├── outputs.tf
+│       ├── data.tf               # Data source da AMI Amazon Linux 2023
+│       ├── Nginx.sh.tpl          # Template do user_data (nginx + página)
+│       ├── terraform.tfvars      # (não versionado)
+│       ├── terraform.tfvars.example
+│       └── ALB/                  # Módulo do Load Balancer
+│           ├── main.tf
+│           ├── variables.tf
+│           ├── outputs.tf
+│           ├── terraform.tfvars  # (não versionado)
+│           └── terraform.tfvars.example
+└── README.md
+```
+
+> Os três diretórios (`vpc/`, `EC2/`, `EC2/ALB/`) são **estados Terraform independentes**. Cada um precisa do seu próprio `terraform init`, `plan` e `apply`, executados na ordem descrita abaixo.
+
+## Pré-requisitos
+
+- [Terraform](https://developer.hashicorp.com/terraform/downloads) instalado
+- Credenciais AWS configuradas (`aws configure` ou variáveis de ambiente)
+- Conta AWS com permissão para criar VPC, EC2, Security Groups e Load Balancers
+
+## Ordem de execução
+
+A infraestrutura tem dependências entre módulos, então a ordem importa:
+
+```
+1. vpc/       → cria a rede (VPC + 2 subnets em AZs diferentes)
+2. EC2/ALB/   → cria o Load Balancer (depende dos subnet_ids da VPC)
+3. EC2/       → cria as instâncias (depende do vpc_id da VPC e do target_group/SG do ALB)
+```
+
+### 1. Provisionar a VPC
+
 ```bash
+cd vpc
+cp terraform.tfvars.example terraform.tfvars   # edite com seus valores
 terraform init
+terraform plan -var-file="terraform.tfvars"
+terraform apply -var-file="terraform.tfvars"
 ```
 
-**3. Valide e planeje a infraestrutura:**
-Confira o planejamento do que o Terraform vai criar na sua conta AWS antes de aplicar as mudanças:
+Anote os outputs `vpc_id`, `public_subnet_id` e `public_subnet_id_b` — eles serão usados nos próximos módulos.
+
 ```bash
-terraform plan
+terraform output
 ```
 
-**4. Aplique as configurações (Deploy):**
-Provisione a infraestrutura completa. Digite `yes` para confirmar quando solicitado no terminal.
+### 2. Provisionar o Load Balancer
+
 ```bash
-terraform apply
+cd EC2/ALB
+cp terraform.tfvars.example terraform.tfvars   # preencha com vpc_id e os 2 subnet_ids do passo anterior
+terraform init
+terraform plan -var-file="terraform.tfvars"
+terraform apply -var-file="terraform.tfvars"
 ```
 
-**5. Destruir os recursos (Opcional):**
-Caso precise encerrar o laboratório e queira remover tudo o que foi criado para evitar custos na AWS:
+Anote os outputs `alb_dns_name`, `alb_security_group_id` e `target_group_arn`.
+
 ```bash
-terraform destroy
+terraform output
 ```
 
----
+### 3. Provisionar as instâncias EC2
 
-## 👥 Autores e Agradecimentos
+```bash
+cd ../  # volta para EC2/
+cp terraform.tfvars.example terraform.tfvars   # preencha com vpc_id, subnet_ids e os outputs do ALB
+terraform init
+terraform plan -var-file="terraform.tfvars"
+terraform apply -var-file="terraform.tfvars"
+```
 
-*   **Edina Prado** - *DevOps Engineer*
+### 4. Testar
+
+Aguarde 1-2 minutos para as instâncias passarem no health check do target group, depois acesse o DNS do ALB:
+
+```bash
+curl http://<alb_dns_name>
+```
+
+Atualize algumas vezes — a resposta deve alternar entre `Instância: 1` e `Instância: 2`, confirmando o balanceamento de carga.
+
+Para conferir a saúde dos targets diretamente:
+```bash
+aws elbv2 describe-target-health --target-group-arn "<target_group_arn>"
+```
+
+## Detalhes de cada módulo
+
+### `vpc/`
+Cria a VPC (CIDR configurável via `vpc_cidr`, default `10.18.0.0/16`), duas subnets públicas em zonas de disponibilidade diferentes (requisito do ALB), um Internet Gateway e uma Route Table pública associada às duas subnets.
+
+**Variáveis principais:** `name_prefix`, `vpc_cidr`, `public_subnet_cidr` / `public_subnet_cidr_b`, `availability_zone` / `availability_zone_b`.
+
+### `EC2/ALB/`
+Cria o Application Load Balancer, seu próprio Security Group (libera porta 80 do mundo), um Target Group (health check em `/`) e um Listener HTTP na porta 80 encaminhando para o Target Group.
+
+**Variáveis principais:** `name_prefix`, `vpc_id`, `public_subnet_ids` (lista com as 2 subnets).
+
+### `EC2/`
+Cria 2 instâncias EC2 (Amazon Linux 2023, via `data.aws_ami`), distribuídas uma em cada subnet (`element(var.subnet_ids, count.index)`), com um Security Group que libera SSH (22) para qualquer origem e HTTP (80) **apenas** a partir do Security Group do ALB. Cada instância é registrada no Target Group via `aws_lb_target_group_attachment`.
+
+O `user_data` usa `templatefile()` sobre `Nginx.sh.tpl`, injetando o número da instância (`instance_number = count.index + 1`) para diferenciar visualmente qual instância respondeu à requisição — útil para validar o balanceamento de carga.
+
+**Variáveis principais:** `name_prefix`, `instance_type`, `vpc_id`, `subnet_ids` (lista), `alb_security_group_id`, `target_group_arn`.
+
+⚠️ O `user_data` só roda no **primeiro boot** da instância. Alterações no `Nginx.sh.tpl` exigem recriar a instância (`terraform apply -replace="aws_instance.web_server[N]"`) para terem efeito — uma simples atualização in-place não reexecuta o script.
+
+## Segurança e boas práticas aplicadas
+
+- Instâncias EC2 não aceitam tráfego HTTP diretamente da internet — só do Security Group do ALB.
+- Nenhum arquivo `terraform.tfstate` ou `terraform.tfvars` (com dados reais da conta) é versionado — ver `.gitignore`.
+- Cada módulo usa `*.tfvars.example` como referência de preenchimento, sem expor IDs reais de VPC/subnet/conta.
+- Duas AZs distintas garantem tolerância a falha de uma zona de disponibilidade.
+
+## Destruindo a infraestrutura
+
+A destruição segue a **ordem inversa** da criação, para respeitar as dependências entre módulos:
+
+```bash
+# 1. Instâncias primeiro
+cd EC2
+terraform destroy -var-file="terraform.tfvars"
+
+# 2. Depois o Load Balancer
+cd ALB
+terraform destroy -var-file="terraform.tfvars"
+
+# 3. Por último, a VPC
+cd ../..
+terraform destroy -var-file="terraform.tfvars"
+```
+
+⚠️ Destruir a VPC antes do ALB/EC2 falha, pois ainda existem recursos dependentes (subnets em uso, ENIs do ALB, etc).
+
+## Ambiente de teste local (WSL) — nota
+
+O script `Nginx.sh.tpl` usa `dnf`, gerenciador de pacotes do **Amazon Linux** — não funciona em ambientes Ubuntu/Debian (que usam `apt`). Isso é esperado: o script é feito para rodar como `user_data` na instância EC2 real (Amazon Linux 2023), não para teste local no WSL.
 
 
