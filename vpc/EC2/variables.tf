@@ -8,22 +8,22 @@ variable "instance_type" {
   type        = string
 }
 
-variable "subnet_id" {
-  description = "ID da subnet onde a instância será criada"
-  type        = string
-}
-
 variable "vpc_id" {
   description = "ID da VPC onde os recursos serão criados"
   type        = string
 }
 
-variable "public_subnet_cidr" {
-  description = "CIDR da subnet pública"
+variable "subnet_ids" {
+  description = "Lista de subnets para distribuir as instâncias"
+  type        = list(string)
+}
+
+variable "alb_security_group_id" {
+  description = "ID do security group do ALB"
   type        = string
 }
 
-variable "availability_zone" {
-  description = "Zona de disponibilidade onde a subnet será criada"
+variable "target_group_arn" {
+  description = "ARN do target group do ALB"
   type        = string
 }

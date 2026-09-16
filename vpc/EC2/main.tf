@@ -12,11 +12,11 @@ resource "aws_security_group" "instance" {
   }
 
   ingress {
-    description = "HTTP"
-    from_port   = 80
-    to_port     = 80
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    description     = "HTTP via ALB"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [var.alb_security_group_id]
   }
 
   egress {
@@ -32,16 +32,26 @@ resource "aws_security_group" "instance" {
 }
 
 resource "aws_instance" "web_server" {
+  count                  = 2
   ami                    = data.aws_ami.amazon_linux.id
   instance_type          = var.instance_type
-  subnet_id              = var.subnet_id
+  subnet_id              = element(var.subnet_ids, count.index)
   vpc_security_group_ids = [aws_security_group.instance.id]
 
-  user_data = file("${path.module}/Nginx.sh")
+  user_data = templatefile("${path.module}/Nginx.sh.tpl", {
+    instance_number = count.index + 1
+  })
 
   tags = {
-    Name = "${var.name_prefix}-instance"
+    Name = "${var.name_prefix}-instance-${count.index + 1}"
   }
+}
+
+resource "aws_lb_target_group_attachment" "app" {
+  count            = 2
+  target_group_arn = var.target_group_arn
+  target_id        = aws_instance.web_server[count.index].id
+  port             = 80
 }
 
 

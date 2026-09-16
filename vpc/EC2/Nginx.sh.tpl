@@ -7,15 +7,17 @@ systemctl enable nginx
 
 # Cria a página web exatamente com o conteúdo que você solicitada
 cat << 'EOF' > /usr/share/nginx/html/index.html
--------------------------------------
+--------------------------------------
 
-             DEVOPS LAB
+        DEVOPS LAB
 
-     Provisioned with Terraform
+    Provisioned with Terraform
 
 Environment: QA
 
+Instância: ${instance_number}
+
 Managed by: Terraform
 
--------------------------------------
+--------------------------------------
 EOF

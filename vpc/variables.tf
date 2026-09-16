@@ -18,3 +18,13 @@ variable "availability_zone" {
   description = "Zona de disponibilidade onde a subnet será criada"
   type        = string
 }
+
+variable "availability_zone_b" {
+  description = "Segunda zona de disponibilidade"
+  type        = string
+}
+
+variable "public_subnet_cidr_b" {
+  description = "CIDR da segunda subnet pública"
+  type        = string
+}

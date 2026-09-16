@@ -1,19 +1,15 @@
-output "instance_id" {
-  description = "ID da instancia EC2 criada"
-  value = aws_instance.web_server.id
+output "instance_ids" {
+  value = aws_instance.web_server[*].id
 }
 
-output "public_ip" {
-  description = "IP publico da instancia EC2"
-  value = aws_instance.web_server.public_ip
+output "public_ips" {
+  value = aws_instance.web_server[*].public_ip
 }
 
-output "private_ip" {
-  description = "IP privado da instancia EC2"
-  value = aws_instance.web_server.private_ip
+output "private_ips" {
+  value = aws_instance.web_server[*].private_ip
 }
 
 output "security_group_id" {
-  description = "ID do security group da instancia"
-  value       = aws_security_group.instance.id
+  value = aws_security_group.instance.id
 }
