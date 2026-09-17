@@ -1,0 +1,6 @@
+name_prefix          = "pawa-edina"
+public_subnet_cidr   = "10.18.1.0/24"
+availability_zone    = "us-east-1a"
+availability_zone_b  = "us-east-1b"
+public_subnet_cidr_b = "10.18.2.0/24"
+instance_type        = "t2.micro"
